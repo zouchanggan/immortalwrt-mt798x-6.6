@@ -352,6 +352,8 @@ void ppd_dev_setting(void)
 									{break;}
 									if ((strcmp(dev->name, "eth1") == 0))     
 									{break;}
+									if ((strcmp(dev->name, "lan") == 0))     
+									{break;}
 							}
 						}
                     }
