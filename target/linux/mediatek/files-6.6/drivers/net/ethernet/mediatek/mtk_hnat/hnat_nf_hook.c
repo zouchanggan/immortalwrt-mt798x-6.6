@@ -389,8 +389,9 @@ void ppd_dev_setting(void)
 			}
 		}
 	}
-        printk("\nrx now ppd dev is %s\n",hnat_priv->g_ppdev->name);
-        printk("\ntx now ppd dev is %s\n",ppd_dev->name);
+	
+	pr_info("%s : now rx dev: %s, tx dev: %s\n", 
+		__func__, hnat_priv->g_ppdev->name, ppd_dev->name);
 }
 
 int nf_hnat_netdevice_event(struct notifier_block *unused, unsigned long event,
