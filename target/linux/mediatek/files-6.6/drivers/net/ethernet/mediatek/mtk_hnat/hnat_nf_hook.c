@@ -1076,10 +1076,16 @@ mtk_hnat_ipv6_nf_pre_routing(void *priv, struct sk_buff *skb,
 	if (!skb)
 		goto drop;
 
-	if (!IS_WHNAT(state->in) && IS_EXT(state->in) && IS_SPACE_AVAILABLE_HEAD(skb)) {
+	if (!IS_WHNAT(state->in) && IS_EXT(state->in)) {
+		if (unlikely(skb_is_gso(skb) || skb_shinfo(skb)->frag_list))
+        	return NF_ACCEPT;
+        if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
+        	if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
+            	return NF_ACCEPT;
+        }
 		skb_hnat_alg(skb) = 0;
-		skb_hnat_filled(skb) = 0;
 		skb_hnat_magic_tag(skb) = HNAT_MAGIC_TAG;
+		skb_hnat_filled(skb) = 0;
 	}
 
 	if (!is_magic_tag_valid(skb))
@@ -1152,11 +1158,18 @@ mtk_hnat_ipv4_nf_pre_routing(void *priv, struct sk_buff *skb,
 		goto drop;
 		
 
-	if (!IS_WHNAT(state->in) && IS_EXT(state->in) && IS_SPACE_AVAILABLE_HEAD(skb)) {
+	if (!IS_WHNAT(state->in) && IS_EXT(state->in)) {
+		if (unlikely(skb_is_gso(skb) || skb_shinfo(skb)->frag_list))
+        	return NF_ACCEPT;
+        if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
+        	if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
+            	return NF_ACCEPT;
+        }
 		skb_hnat_alg(skb) = 0;
-		skb_hnat_filled(skb) = 0;
 		skb_hnat_magic_tag(skb) = HNAT_MAGIC_TAG;
+		skb_hnat_filled(skb) = 0;
 	}
+
 
 	if (!is_magic_tag_valid(skb))
 		return NF_ACCEPT;
@@ -1216,11 +1229,18 @@ mtk_hnat_br_nf_local_in(void *priv, struct sk_buff *skb,
 	if (!skb)
 		goto drop;
 	
-	if (!IS_WHNAT(state->in) && IS_EXT(state->in) && IS_SPACE_AVAILABLE_HEAD(skb)) {
+	if (!IS_WHNAT(state->in) && IS_EXT(state->in)) {
+		if (unlikely(skb_is_gso(skb) || skb_shinfo(skb)->frag_list))
+        	return NF_ACCEPT;
+        if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
+        	if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
+            	return NF_ACCEPT;
+        }
 		skb_hnat_alg(skb) = 0;
 		skb_hnat_filled(skb) = 0;
 		skb_hnat_magic_tag(skb) = HNAT_MAGIC_TAG;
 	}
+
 
 	if (!is_magic_tag_valid(skb))
 		return NF_ACCEPT;
