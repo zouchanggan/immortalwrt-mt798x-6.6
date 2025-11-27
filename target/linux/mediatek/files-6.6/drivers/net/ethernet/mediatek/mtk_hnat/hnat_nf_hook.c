@@ -112,6 +112,9 @@ static inline struct net_device *get_dev_from_index(int index)
 			break;
 		}
 	}
+
+	if (index == 1234)
+		dev = ppd_dev; 
 	return dev;
 }
 
@@ -338,7 +341,6 @@ static void gmac_ppe_fwd_enable(struct net_device *dev)
 
 void ppd_dev_setting(void)
 {
-	int is_dsa = 0;
 	br_dev = __dev_get_by_name(&init_net, "br-lan");
 	eth1_dev = __dev_get_by_name(&init_net, "eth1");
         hnat_priv->g_ppdev = __dev_get_by_name(&init_net, "eth0");
@@ -350,13 +352,10 @@ void ppd_dev_setting(void)
                         if (dev->flags & IFF_UP) {
 				if (netif_carrier_ok(dev)){
 					ppd_dev = __dev_get_by_name(&init_net, dev->name);
-                                	if ((strcmp(dev->name, "eth0") == 0))     
-						{break;}
-					if (strncmp(dev->name, "lan", 3) == 0)     
-						{
-						is_dsa =1;											break;}
-					if ((strcmp(dev->name, "eth1") == 0))     
-						{break;}
+                                	if (!strncmp(dev->name, "eth0",4))     
+						break;
+					if (!strncmp(dev->name, "eth1",4))     
+						break;
 				}
 			}
                     }
@@ -374,22 +373,7 @@ void ppd_dev_setting(void)
 		if (netif_carrier_ok(br_dev))
                 hnat_priv->g_ppdev = __dev_get_by_name(&init_net, "eth0");
                 }
-	}
-	if(is_dsa)
-	{
-	if (br_dev && eth1_dev) {
-		struct net_device *dev;
-		struct list_head *pos;
-		netdev_for_each_lower_dev(br_dev, dev, pos) {
-			if (dev == eth1_dev) {
-				hnat_priv->g_ppdev = __dev_get_by_name(&init_net, "eth1");
-				ppd_dev = __dev_get_by_name(&init_net, "eth1");	
-				break;
-				}
-			}
-		}
-	}
-	
+	}	
 	pr_info("%s : now rx dev: %s, tx dev: %s\n", 
 		__func__, hnat_priv->g_ppdev->name, ppd_dev->name);
 }
@@ -602,7 +586,7 @@ unsigned int do_hnat_ext_to_ge2(struct sk_buff *skb, const char *func)
 	struct net_device *dev;
 	struct foe_entry *entry;
 
-	trace_printk( "%s: vlan_prot=0x%x, vlan_tci=%x\n", __func__,
+	trace_printk("%s: vlan_prot=0x%x, vlan_tci=%x\n", __func__,
 		     ntohs(skb->vlan_proto), skb->vlan_tci);
 
 	dev = get_dev_from_index(skb->vlan_tci & VLAN_VID_MASK);
@@ -1004,7 +988,43 @@ static unsigned int is_ppe_support_type(struct sk_buff *skb)
 	return 0;
 }
 
+static unsigned int do_hnat_cpu_to_ge(struct sk_buff *skb)
+{
+	if (unlikely(skb_shinfo(skb)->frag_list))
+                return -1;
+        if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
+                if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
+                return -1;
+        }
 
+	skb_hnat_alg(skb) = 0;
+	skb_hnat_magic_tag(skb) = HNAT_MAGIC_TAG;
+	skb_hnat_filled(skb) = 0;
+
+	if (unlikely(!is_ppe_support_type(skb))) {
+                skb_hnat_alg(skb) = 1;
+                return -1;
+        }
+        if (hnat_priv->g_ppdev && hnat_priv->g_ppdev->flags & IFF_UP) {
+                u16 vlan_id = 0;
+                skb_set_network_header(skb, 0);
+                skb_push(skb, ETH_HLEN);
+		set_to_ppe(skb);
+                vlan_id = skb_vlan_tag_get_id(skb);
+                if (unlikely(vlan_id)) {
+                        skb = vlan_insert_tag(skb, skb->vlan_proto, skb->vlan_tci);
+                        if (!skb)
+                                return -1;
+                }
+
+                /*set where we come from */
+                __vlan_hwaccel_put_tag(skb, htons(ETH_P_8021Q), VLAN_CFI_MASK | (1234 & VLAN_VID_MASK));
+                skb->dev = hnat_priv->g_ppdev;
+                dev_queue_xmit(skb);
+     		return 0;
+        }
+	return -1;
+}
 static void mtk_hnat_nf_update(struct sk_buff *skb)
 {
 	struct nf_conn *ct;
@@ -1077,12 +1097,12 @@ mtk_hnat_ipv6_nf_pre_routing(void *priv, struct sk_buff *skb,
 		goto drop;
 
 	if (!IS_WHNAT(state->in) && IS_EXT(state->in)) {
-		if (unlikely(skb_is_gso(skb) || skb_shinfo(skb)->frag_list))
-        	return NF_ACCEPT;
-        if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
-        	if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
-            	return NF_ACCEPT;
-        }
+		if (unlikely(skb_shinfo(skb)->frag_list))
+        		return NF_ACCEPT;
+		if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
+                        if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
+                                return NF_ACCEPT;
+                }
 		skb_hnat_alg(skb) = 0;
 		skb_hnat_magic_tag(skb) = HNAT_MAGIC_TAG;
 		skb_hnat_filled(skb) = 0;
@@ -1159,17 +1179,16 @@ mtk_hnat_ipv4_nf_pre_routing(void *priv, struct sk_buff *skb,
 		
 
 	if (!IS_WHNAT(state->in) && IS_EXT(state->in)) {
-		if (unlikely(skb_is_gso(skb) || skb_shinfo(skb)->frag_list))
-        	return NF_ACCEPT;
-        if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
-        	if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
-            	return NF_ACCEPT;
+                if (unlikely(skb_shinfo(skb)->frag_list))
+                        return NF_ACCEPT;
+		if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
+                        if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
+                                return NF_ACCEPT;
+                }
+                skb_hnat_alg(skb) = 0;
+                skb_hnat_magic_tag(skb) = HNAT_MAGIC_TAG;
+                skb_hnat_filled(skb) = 0;
         }
-		skb_hnat_alg(skb) = 0;
-		skb_hnat_magic_tag(skb) = HNAT_MAGIC_TAG;
-		skb_hnat_filled(skb) = 0;
-	}
-
 
 	if (!is_magic_tag_valid(skb))
 		return NF_ACCEPT;
@@ -1230,17 +1249,16 @@ mtk_hnat_br_nf_local_in(void *priv, struct sk_buff *skb,
 		goto drop;
 	
 	if (!IS_WHNAT(state->in) && IS_EXT(state->in)) {
-		if (unlikely(skb_is_gso(skb) || skb_shinfo(skb)->frag_list))
-        	return NF_ACCEPT;
-        if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
-        	if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
-            	return NF_ACCEPT;
+                if (unlikely(skb_shinfo(skb)->frag_list))
+                        return NF_ACCEPT;
+		if (unlikely(skb_headroom(skb) < (FOE_INFO_LEN + ETH_HLEN))) {
+                	if(unlikely(skb_cow(skb, FOE_INFO_LEN + ETH_HLEN)))
+                		return NF_ACCEPT;
+        	}
+                skb_hnat_alg(skb) = 0;
+                skb_hnat_magic_tag(skb) = HNAT_MAGIC_TAG;
+                skb_hnat_filled(skb) = 0;
         }
-		skb_hnat_alg(skb) = 0;
-		skb_hnat_filled(skb) = 0;
-		skb_hnat_magic_tag(skb) = HNAT_MAGIC_TAG;
-	}
-
 
 	if (!is_magic_tag_valid(skb))
 		return NF_ACCEPT;
@@ -1981,9 +1999,6 @@ static unsigned int skb_to_hnat_info(struct sk_buff *skb,
 				}
 			}
 
-			if (FROM_EXT(skb) || skb_hnat_sport(skb) == NR_QDMA_PORT)
-				entry.ipv4_hnapt.iblk2.fqos = 0;
-			else
 				entry.ipv4_hnapt.iblk2.fqos = (qid != 0) ? 1 : 0;
 		} else {
 			entry.ipv4_hnapt.iblk2.fqos = 0;
@@ -2012,9 +2027,6 @@ static unsigned int skb_to_hnat_info(struct sk_buff *skb,
 				}
 			}
 
-			if (FROM_EXT(skb))
-				entry.ipv6_5t_route.iblk2.fqos = 0;
-			else
 				entry.ipv6_5t_route.iblk2.fqos = (qid != 0) ? 1 : 0;
 		} else {
 			entry.ipv6_5t_route.iblk2.fqos = 0;
@@ -2654,6 +2666,11 @@ mtk_hnat_br_nf_local_out(void *priv, struct sk_buff *skb,
 
 	post_routing_print(skb, state->in, state->out, __func__);
 
+	if ((!strncmp(state->out->name, "ra",2)) && !is_from_extge(skb) && !( FROM_GE_PPD(skb) || FROM_GE_LAN(skb) ||
+		   FROM_GE_WAN(skb) || FROM_WED(skb) || FROM_EXT(skb))){
+		if (!do_hnat_cpu_to_ge(skb))
+              		return NF_STOLEN;	
+        }
 	if (!mtk_hnat_nf_post_routing(skb, state->out, 0, __func__))
 		return NF_ACCEPT;
 
