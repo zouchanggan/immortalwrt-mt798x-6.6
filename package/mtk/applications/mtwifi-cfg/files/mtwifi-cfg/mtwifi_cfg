@@ -534,8 +534,10 @@ function mtwifi_cfg_setup(argv)
     for idx = 0,vif_num-1 do
         v = cfg.interfaces[tostring(idx)]
         if v.config.mode == "ap" then
+            if idx == 0 then
             if v.config.macaddr and v.config.macaddr ~= "" then
-                dats.MacAddress = v.config.macaddr or ""
+                dats.MacAddress = v.config.macaddr
+            end
             else
                 set_idx_dat(dats, apidx, "MacAddress", v.config.macaddr or "")
             end
