@@ -13,10 +13,10 @@
 
 	aliases {
 		serial0 = &uart0;
-		led-boot = &led_system;
-		led-failsafe = &led_alarm;
-		led-running = &led_system;
-		led-upgrade = &led_alarm;
+		led-boot = &red_led;
+		led-failsafe = &red_led;
+		led-running = &green_led;
+		led-upgrade = &green_led;
 	};
 
 	chosen {
@@ -46,16 +46,28 @@
 	leds-gpio {
 		compatible = "gpio-leds";
 
-		led_system: led-0 {
-			color = <LED_COLOR_ID_WHITE>;
+		green_led: led-0 {
+			color = <LED_COLOR_ID_GREEN>;
 			function = LED_FUNCTION_STATUS;
 			gpios = <&pio 9 GPIO_ACTIVE_LOW>;
 		};
 
-		led_alarm: led-1 {
-			color = <LED_COLOR_ID_PURPLE>;
+		red_led: led-1 {
+			color = <LED_COLOR_ID_RED>;
 			function = LED_FUNCTION_STATUS;
-			gpios = <&pio 19 GPIO_ACTIVE_LOW>;
+			gpios = <&pio 10 GPIO_ACTIVE_LOW>;
+		};
+
+		led-2 {
+			color = <LED_COLOR_ID_BLUE>;
+			function = LED_FUNCTION_STATUS;
+			gpios = <&pio 11 GPIO_ACTIVE_LOW>;
+		};
+
+		led-3 {
+			color = <LED_COLOR_ID_GREEN>;
+			function = "mesh";
+			gpios = <&pio 22 GPIO_ACTIVE_LOW>;
 		};
 	};
 };
@@ -78,11 +90,7 @@
 		compatible = "mediatek,eth-mac";
 		reg = <1>;
 		phy-mode = "2500base-x";
-		fixed-link {
-                        speed = <2500>;
-                        full-duplex;
-                        paus;
-                };
+		phy-handle = <&phy15>;
 	};
 
 	mdio: mdio-bus {
@@ -105,13 +113,11 @@
 	phy15: phy@15 {
 			compatible = "ethernet-phy-id03a2.a411";
 			reg = <15>;
-			airoha,polarity = <1>;
+			airoha,phy-handle;
 			reset-gpios = <&pio 6 1>;
 			reset-assert-us = <10000>;
 			reset-deassert-us = <20000>;
 			phy-mode = "2500base-x";
-			full-duplex;
-			pause;
 	};
 };
 

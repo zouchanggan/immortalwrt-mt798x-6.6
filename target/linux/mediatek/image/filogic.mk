@@ -1939,7 +1939,7 @@ define Device/ruijie_rg-x60-new-107m
   DEVICE_MODEL := RG-X60 New-107M
   DEVICE_DTS := mt7986a-ruijie-rg-x60-new-107m
   DEVICE_DTS_DIR := ../dts
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7986-firmware mt7986-wo-firmware
+  DEVICE_PACKAGES := kmod-phy-airoha-en8811h
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 endef
 TARGET_DEVICES += ruijie_rg-x60-new-107m
@@ -1959,7 +1959,7 @@ define Device/ruijie_rg-x60-new
   DEVICE_MODEL := RG-X60 New
   DEVICE_DTS := mt7986a-ruijie-rg-x60-new
   DEVICE_DTS_DIR := ../dts
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7986-firmware mt7986-wo-firmware
+  DEVICE_PACKAGES := kmod-phy-airoha-en8811h
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 endef
 TARGET_DEVICES += ruijie_rg-x60-new
