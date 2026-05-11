@@ -68,14 +68,16 @@ platform_do_upgrade() {
 	case "$board" in
 	netcore,n60-pro|\
 	tplink,tl-xdr4288|\
-        tplink,tl-xdr6086|\
-        tplink,tl-xdr6088|\
+    tplink,tl-xdr6086|\
+    tplink,tl-xdr6088|\
+	tplink,wma301|\
+	tplink,wma301-stock|\
 	xiaomi,redmi-router-ax6000-ubootmod|\
 	xiaomi,mi-router-ax3000t-ubootmod|\
-        xiaomi,mi-router-wr30u-ubootmod|\
+    xiaomi,mi-router-wr30u-ubootmod|\
 	h3c,magic-nx30-pro|\
 	jcg,q30-pro|\
-        qihoo,360t7)
+    qihoo,360t7)
 		CI_UBIPART="ubi"
     		CI_KERNPART="kernel"
       		CI_ROOTPART="rootfs"
@@ -108,6 +110,7 @@ platform_do_upgrade() {
 	routerich,ax3000-ubootmod|\
 	ruijie,rg-x60-new-ubootmod|\
 	tplink,tl-xtr8488|\
+	tplink,wma301-ubootmod|\
 	wirelesstag,zx7981pd-ubootmod|\
 	zyxel,ex5601-t0-ubootmod)
 		fit_do_upgrade "$1"
